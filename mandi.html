@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Farmer Welfare Portal</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f9f4; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; display: flex; flex-wrap: wrap; gap: 20px; }
+        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); flex: 1; min-width: 300px; border-top: 5px solid #27ae60; }
+        h2 { color: #27ae60; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 70%; }
+        button { padding: 10px 15px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .data-row { margin: 15px 0; padding: 10px; background: #f9f9f9; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+        .advisory { color: #d35400; font-weight: bold; font-size: 0.9em; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<h1 style="text-align: center; color: #1e8449;">🚜 Smart Farmer Welfare Dashboard</h1>
+
+<div class="container">
+    <div class="card">
+        <h2>🌦️ Live Mausam (Weather)</h2>
+        <input type="text" id="cityInput" placeholder="Shehar ka naam (e.g. Karnal)">
+        <button onclick="getWeather()">Dekhein</button>
+        
+        <div id="weatherInfo" class="data-row" style="display:none;">
+            <p id="w-loc" style="font-weight: bold;"></p>
+            <p id="w-temp" style="font-size: 2em; margin: 5px 0;"></p>
+            <p id="w-desc"></p>
+            <div id="w-advice" class="advisory"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🌾 Mandi Bhav (Prices)</h2>
+        <p style="font-size: 0.8em; color: #666;">Latest Mandi rates (Example: Wheat in Punjab)</p>
+        <div id="mandiInfo" class="data-row">
+            <table id="mandiTable">
+                <thead>
+                    <tr><th>Mandi</th><th>Fasal</th><th>Rate (₹)</th></tr>
+                </thead>
+                <tbody id="mandiBody">
+                    <tr><td colspan="3">Data load ho raha hai...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <button onclick="getMandiPrices()" style="width: 100%; margin-top: 10px; background: #2980b9;">Update Prices</button>
+    </div>
+</div>
+
+<script>
+    // --- SET YOUR KEYS HERE ---
+    const WEATHER_API_KEY = "15d9f34a0894cf7a60e3b5a2624bcdaN"; // Get from openweathermap.org
+    const GOVT_API_KEY = "YOUR_DATA_GOV_API_KEY";     // Get from data.gov.in
+
+    // 1. Weather Function
+    async function getWeather() {
+        const city = document.getElementById('cityInput').value;
+        if(!city) return alert("Please enter city name");
+        
+        const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${WEATHER_API_KEY}&units=metric&lang=hi`;
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            if(data.cod !== 200) throw new Error();
+
+            document.getElementById('weatherInfo').style.display = "block";
+            document.getElementById('w-loc').innerText = `${data.name}, ${data.sys.country}`;
+            document.getElementById('w-temp').innerText = `${Math.round(data.main.temp)}°C`;
+            document.getElementById('w-desc').innerText = `Mausam: ${data.weather[0].description}`;
+            
+            // Farmer Advice
+            let advice = data.main.temp > 30 ? "⚠️ Aaj dhoop tez hai, sinchai (irrigation) ka dhyan rakhein." : "✅ Mausam kheti ke liye anukul hai.";
+            document.getElementById('w-advice').innerText = advice;
+        } catch(e) { alert("City nahi mili!"); }
+    }
+
+    // 2. Mandi Prices Function
+    async function getMandiPrices() {
+        const resourceId = "9ef842fd-5df1-4d89-8139-399556059627"; 
+        const url = `https://api.data.gov.in/resource/${resourceId}?api-key=${GOVT_API_KEY}&format=json&limit=5`;
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            const tbody = document.getElementById('mandiBody');
+            tbody.innerHTML = "";
+
+            data.records.forEach(item => {
+                tbody.innerHTML += `<tr>
+                    <td>${item.market}</td>
+                    <td>${item.commodity}</td>
+                    <td><b>${item.modal_price}</b></td>
+                </tr>`;
+            });
+        } catch(e) {
+            document.getElementById('mandiBody').innerHTML = "<tr><td colspan='3'>Error: API Key check karein!</td></tr>";
+        }
+    }
+
+    // Load Mandi Prices on Start
+    window.onload = getMandiPrices;
+</script>
+
+</body>
+</html>
